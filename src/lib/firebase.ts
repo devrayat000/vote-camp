@@ -5,7 +5,7 @@ import {
 } from "firebase/firestore";
 
 async function fetchConfig() {
-  const res = await fetch("http://localhost:5000/__/firebase/init.json");
+  const res = await fetch("/__/firebase/init.json");
   if (!res.ok) {
     throw new Error(`Failed to fetch Firebase config: ${res.statusText}`);
   }
