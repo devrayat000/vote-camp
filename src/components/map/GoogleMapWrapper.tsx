@@ -8,6 +8,41 @@ import { Button } from "../ui/button";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
 
+// Helper to convert GeoJSON coordinates to Google Maps paths
+const convertCoordinates = (geometry: {
+  type: string;
+  coordinates: unknown[];
+}) => {
+  if (!geometry || !geometry.coordinates) return [];
+
+  const processPolygon = (coords: unknown[]) => {
+    // GeoJSON is [lng, lat], Google Maps is {lat, lng}
+    // coords[0] is the outer ring
+    const ring = coords[0] as number[][];
+    return ring.map((pt) => ({ lat: pt[1], lng: pt[0] }));
+  };
+
+  if (geometry.type === "Polygon") {
+    return [processPolygon(geometry.coordinates)];
+  } else if (geometry.type === "MultiPolygon") {
+    return geometry.coordinates.map((poly) =>
+      processPolygon(poly as unknown[])
+    );
+  }
+  return [];
+};
+
+function getRestrictions(constituency: Constituency) {
+  const constituencyPaths = convertCoordinates(constituency.geometry);
+
+  // Calculate bounds based on the constituency geometry
+  const bounds = new google.maps.LatLngBounds();
+  constituencyPaths.forEach((path) => {
+    path.forEach((point) => bounds.extend(point));
+  });
+  return bounds;
+}
+
 interface GoogleMapWrapperProps {
   constituency: Constituency;
 }
@@ -23,6 +58,8 @@ export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
     return () => unsubscribe();
   }, [constituency.id]);
 
+  const restrictions = getRestrictions(constituency);
+
   return (
     <Fragment>
       <Map
@@ -36,6 +73,10 @@ export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
           style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
         }}
         gestureHandling={"greedy"}
+        restriction={{
+          latLngBounds: restrictions,
+          strictBounds: false,
+        }}
       >
         <MapControl position={ControlPosition.TOP_LEFT}>
           <Button
