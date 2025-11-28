@@ -1,0 +1,147 @@
+import { db } from "./firebase";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  doc,
+  getDocs,
+  getDoc,
+} from "firebase/firestore";
+import type { CampaignMarker, Constituency, Ward, MarkerStatus } from "./types";
+
+// --- Constituencies & Wards (Real Firestore Data) ---
+
+export const getConstituencies = async (): Promise<Constituency[]> => {
+  try {
+    const snapshot = await getDocs(collection(db, "constituencies"));
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        geometry:
+          typeof data.geometry === "string"
+            ? JSON.parse(data.geometry)
+            : data.geometry,
+      } as Constituency;
+    });
+  } catch (e) {
+    console.error("Error fetching constituencies:", e);
+    return [];
+  }
+};
+
+export const getConstituencyById = async (
+  id: string
+): Promise<Constituency | undefined> => {
+  try {
+    const docRef = doc(db, "constituencies", id);
+    const snapshot = await getDoc(docRef);
+    if (snapshot.exists()) {
+      const data = snapshot.data();
+      return {
+        id: snapshot.id,
+        ...data,
+        geometry:
+          typeof data.geometry === "string"
+            ? JSON.parse(data.geometry)
+            : data.geometry,
+      } as Constituency;
+    }
+    return undefined;
+  } catch (e) {
+    console.error("Error fetching constituency:", e);
+    return undefined;
+  }
+};
+
+export const getWardsByConstituency = async (
+  constituencyId: string
+): Promise<Ward[]> => {
+  try {
+    const q = query(
+      collection(db, "wards"),
+      where("constituencyId", "==", constituencyId)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        geometry:
+          typeof data.geometry === "string"
+            ? JSON.parse(data.geometry)
+            : data.geometry,
+      } as Ward;
+    });
+  } catch (e) {
+    console.error("Error fetching wards:", e);
+    return [];
+  }
+};
+
+// --- Markers (Real-time Firestore) ---
+
+export const subscribeToMarkers = (
+  constituencyId: string,
+  onUpdate: (markers: CampaignMarker[]) => void
+) => {
+  try {
+    const q = query(
+      collection(db, "campaign_markers"),
+      where("constituencyId", "==", constituencyId)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const markers = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as CampaignMarker[];
+        onUpdate(markers);
+      },
+      (error) => {
+        console.error("Firestore subscription error:", error);
+        // Fallback to empty or local state if needed
+        onUpdate([]);
+      }
+    );
+
+    return unsubscribe;
+  } catch (e) {
+    console.error("Error setting up subscription (likely missing config):", e);
+    return () => {};
+  }
+};
+
+export const addMarker = async (
+  marker: Omit<CampaignMarker, "id" | "createdAt">
+) => {
+  try {
+    await addDoc(collection(db, "campaign_markers"), {
+      ...marker,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error("Error adding marker:", e);
+    alert("Could not save marker. Check Firebase config.");
+  }
+};
+
+export const updateMarkerStatus = async (
+  markerId: string,
+  status: MarkerStatus,
+  notes?: string
+) => {
+  try {
+    const ref = doc(db, "campaign_markers", markerId);
+    await updateDoc(ref, { status, notes });
+  } catch (e) {
+    console.error("Error updating marker:", e);
+  }
+};
