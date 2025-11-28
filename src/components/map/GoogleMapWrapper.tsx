@@ -128,10 +128,15 @@ export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
             onClick={handleMapClick}
             onCameraChanged={(ev) => setZoom(ev.detail.zoom)}
             disableDefaultUI={true}
-            mapTypeControl
-            zoomControl
-            rotateControl
-            controlSize={100}
+            // mapTypeControl
+            mapTypeControlOptions={{
+              position: ControlPosition.TOP_RIGHT,
+              style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+            }}
+            // zoomControl
+            // rotateControl
+
+            // controlSize={100}
           >
             <MapControl position={ControlPosition.TOP_RIGHT}>
               .. any component here will be added to the control-containers of

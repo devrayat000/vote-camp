@@ -1,11 +1,11 @@
-import { Suspense, useEffect } from "react";
+import { Suspense } from "react";
 import {
   Link,
   type LoaderFunctionArgs,
   useLoaderData,
   Await,
 } from "react-router";
-import { getConstituencyById, getWardsByConstituency } from "@/lib/api";
+import { getConstituencyById } from "@/lib/api";
 import { GoogleMapWrapper } from "@/components/map/GoogleMapWrapper";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
