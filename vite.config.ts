@@ -1,12 +1,7 @@
 import path from "node:path";
-import fs from "node:fs";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-
-const config = JSON.parse(
-  fs.readFileSync(".firebaserc", { encoding: "utf-8" })
-);
 
 // https://vite.dev/config/
 export default defineConfig({
