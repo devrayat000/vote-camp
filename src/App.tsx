@@ -1,18 +1,34 @@
-import { Routes, Route } from "react-router";
-import { HomePage } from "@/pages/HomePage";
-import { MapPage } from "@/pages/MapPage";
-import { Toaster } from "@/components/ui/sonner";
+import {
+  Route,
+  createBrowserRouter,
+  createRoutesFromElements,
+  RouterProvider,
+} from "react-router";
+import RootLayout from "./pages/Layout";
+
+const routes = createBrowserRouter(
+  createRoutesFromElements(
+    <Route path="/" element={<RootLayout />}>
+      <Route
+        index
+        lazy={async () => {
+          const module = await import("./pages/HomePage");
+          return module;
+        }}
+      />
+      <Route
+        path="map/:constituencyId"
+        lazy={async () => {
+          const module = await import("./pages/MapPage");
+          return module;
+        }}
+      />
+    </Route>
+  )
+);
 
 function App() {
-  return (
-    <>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/map/:constituencyId" element={<MapPage />} />
-      </Routes>
-      <Toaster />
-    </>
-  );
+  return <RouterProvider router={routes} />;
 }
 
 export default App;

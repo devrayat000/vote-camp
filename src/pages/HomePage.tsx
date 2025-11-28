@@ -1,21 +1,17 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Suspense } from "react";
+import { Await, Link, useLoaderData } from "react-router";
 import { getConstituencies } from "@/lib/api";
-import type { Constituency } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin } from "lucide-react";
 
-export function HomePage() {
-  const [constituencies, setConstituencies] = useState<Constituency[]>([]);
-  const [loading, setLoading] = useState(true);
+export async function loader() {
+  const constituencies = getConstituencies();
+  return { constituencies };
+}
 
-  useEffect(() => {
-    getConstituencies().then((data) => {
-      setConstituencies(data);
-      setLoading(false);
-    });
-  }, []);
+export function Component() {
+  const loaderData = useLoaderData<typeof loader>();
 
   return (
     <div className="container mx-auto p-8">
@@ -26,30 +22,40 @@ export function HomePage() {
         </p>
       </header>
 
-      {loading ? (
-        <div className="text-center">Loading constituencies...</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {constituencies.map((c) => (
-            <Card key={c.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle>{c.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  District: {c.district}
-                </p>
-                <Button asChild className="w-full">
-                  <Link to={`/map/${c.id}`}>
-                    <MapPin className="mr-2 h-4 w-4" />
-                    Open Map
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <Suspense
+        fallback={<div className="text-center">Loading constituencies...</div>}
+      >
+        <Await resolve={loaderData.constituencies}>
+          {(constituencies) => {
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {constituencies.map((c) => (
+                  <Card
+                    key={c.id}
+                    className="hover:shadow-lg transition-shadow"
+                  >
+                    <CardHeader>
+                      <CardTitle>{c.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        District: {c.district}
+                      </p>
+                      <Button asChild className="w-full">
+                        <Link to={`/map/${c.id}`}>
+                          <MapPin className="mr-2 h-4 w-4" />
+                          Open Map
+                        </Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            );
+          }}
+        </Await>
+      </Suspense>
     </div>
   );
 }
+Component.displayName = "HomePage";

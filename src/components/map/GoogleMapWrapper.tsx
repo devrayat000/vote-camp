@@ -2,35 +2,28 @@ import { useEffect, useState } from "react";
 import {
   APIProvider,
   Map,
-  AdvancedMarker,
-  Pin,
+  limitTiltRange,
+  MapControl,
+  ControlPosition,
 } from "@vis.gl/react-google-maps";
 import type { MapMouseEvent } from "@vis.gl/react-google-maps";
 import type {
   Constituency,
-  Ward,
   CampaignMarker,
   GeoPoint,
   MarkerStatus,
 } from "@/lib/types";
-import { Layers } from "./Layers";
-import { MarkerSidebar } from "./MarkerSidebar";
-import { ConstituencySidebar } from "./ConstituencySidebar";
 import { subscribeToMarkers, addMarker, updateMarkerStatus } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { DeckGL } from "@deck.gl/react";
+import { PolygonLayer } from "@deck.gl/layers";
 
 interface GoogleMapWrapperProps {
   constituency: Constituency;
-  wards: Ward[];
 }
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY; // TODO: Replace
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-export function GoogleMapWrapper({
-  constituency,
-  wards,
-}: GoogleMapWrapperProps) {
+export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
   const [markers, setMarkers] = useState<CampaignMarker[]>([]);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -105,45 +98,76 @@ export function GoogleMapWrapper({
   return (
     <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
       <div className="relative w-full h-screen">
-        <Map
-          defaultCenter={constituency.center}
-          defaultZoom={13}
-          mapId="DEMO_MAP_ID" // Required for AdvancedMarker
-          className="w-full h-full"
-          onClick={handleMapClick}
-          onCameraChanged={(ev) => setZoom(ev.detail.zoom)}
-          disableDefaultUI={true}
+        <DeckGL
+          controller
+          initialViewState={{
+            longitude: constituency.center.lng,
+            latitude: constituency.center.lat,
+            zoom: 13,
+          }}
+          onViewStateChange={limitTiltRange}
+          layers={[
+            new PolygonLayer({
+              id: "constituency-layer",
+              data: [constituency.geometry],
+              getPolygon: (d) => d.coordinates,
+              getLineColor: [0x25, 0x63, 0xeb, 0x80],
+              getLineWidth: 20,
+              getFillColor: [0x25, 0x63, 0xeb, 0x40],
+              lineWidthMinPixels: 1,
+              colorFormat: "RGBA",
+              pickable: true,
+            }),
+          ]}
         >
-          <Layers
-            zoom={zoom}
-            constituency={constituency}
-            wards={wards}
-            onConstituencyClick={handleConstituencyClick}
-          />
+          <Map
+            // defaultCenter={constituency.center}
+            // defaultZoom={13}
+            mapId="DEMO_MAP_ID" // Required for AdvancedMarker
+            // className="w-full h-full"
+            onClick={handleMapClick}
+            onCameraChanged={(ev) => setZoom(ev.detail.zoom)}
+            disableDefaultUI={true}
+            mapTypeControl
+            zoomControl
+            rotateControl
+            controlSize={100}
+          >
+            <MapControl position={ControlPosition.TOP_RIGHT}>
+              .. any component here will be added to the control-containers of
+              the google map instance ..
+            </MapControl>
+            {/* <Layers
+              zoom={zoom}
+              constituency={constituency}
+              wards={wards}
+              onConstituencyClick={handleConstituencyClick}
+            />
 
-          {markers.map((marker) => (
-            <AdvancedMarker
-              key={marker.id}
-              position={marker.location}
-              onClick={() => handleMarkerClick(marker.id)}
-            >
-              <Pin
-                background={getStatusColor(marker.status)}
-                borderColor={"#000"}
-                glyphColor={"#fff"}
-              />
-            </AdvancedMarker>
-          ))}
+            {markers.map((marker) => (
+              <AdvancedMarker
+                key={marker.id}
+                position={marker.location}
+                onClick={() => handleMarkerClick(marker.id)}
+              >
+                <Pin
+                  background={getStatusColor(marker.status)}
+                  borderColor={"#000"}
+                  glyphColor={"#fff"}
+                />
+              </AdvancedMarker>
+            ))}
 
-          {newMarkerLocation && (
-            <AdvancedMarker position={newMarkerLocation}>
-              <Pin background={"#3b82f6"} scale={1.2} />
-            </AdvancedMarker>
-          )}
-        </Map>
+            {newMarkerLocation && (
+              <AdvancedMarker position={newMarkerLocation}>
+                <Pin background={"#3b82f6"} scale={1.2} />
+              </AdvancedMarker>
+            )} */}
+          </Map>
+        </DeckGL>
 
         {/* Floating Action Button for Adding Marker */}
-        <div className="absolute bottom-8 right-8">
+        {/* <div className="absolute bottom-8 right-8">
           <Button
             size="lg"
             className={`rounded-full shadow-lg ${
@@ -161,10 +185,10 @@ export function GoogleMapWrapper({
             {isCreating ? <Plus className="rotate-45" /> : <Plus />}
             <span className="ml-2">{isCreating ? "Cancel" : "Add Visit"}</span>
           </Button>
-        </div>
+        </div> */}
 
         {/* Sidebar for Details */}
-        {(selectedMarkerId || newMarkerLocation) && (
+        {/* {(selectedMarkerId || newMarkerLocation) && (
           <div className="absolute top-0 right-0 h-full w-80 bg-white shadow-xl z-10 p-4 animate-in slide-in-from-right">
             <MarkerSidebar
               key={selectedMarkerId || "new"}
@@ -179,23 +203,23 @@ export function GoogleMapWrapper({
               }}
             />
           </div>
-        )}
+        )} */}
 
         {/* Sidebar for Constituency Details */}
-        {showConstituencyDetails && !selectedMarkerId && !newMarkerLocation && (
+        {/* {showConstituencyDetails && !selectedMarkerId && !newMarkerLocation && (
           <div className="absolute top-0 right-0 h-full w-80 bg-white shadow-xl z-10 p-4 animate-in slide-in-from-right">
             <ConstituencySidebar
               constituency={constituency}
               onClose={() => setShowConstituencyDetails(false)}
             />
           </div>
-        )}
+        )} */}
 
         {/* Zoom Indicator (Debug/Info) */}
-        <div className="absolute top-4 left-4 bg-white/90 p-2 rounded shadow text-xs font-mono">
+        {/* <div className="absolute top-4 left-4 bg-white/90 p-2 rounded shadow text-xs font-mono">
           Zoom: {zoom.toFixed(1)} |{" "}
           {zoom < 13 ? "Showing Constituency" : "Showing Wards"}
-        </div>
+        </div> */}
       </div>
     </APIProvider>
   );

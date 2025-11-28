@@ -28,7 +28,7 @@ export default defineConfig({
     // so 'init.json' can be fetched during local development.
     proxy: {
       "/__": {
-        target: `https://${config.projects.default}.web.app`, // Replace with your actual project URL or http://localhost:5000
+        target: `http://localhost:5000`, // Replace with your actual project URL or http://localhost:5000
         changeOrigin: true,
         secure: false,
       },
