@@ -276,7 +276,7 @@ export function GoogleMapWrapper({
           }}
         />
         <PopoverContent
-          className="w-80"
+          className="w-80 max-h-[80vh] overflow-y-auto"
           side="right"
           align="start"
           sideOffset={10}
