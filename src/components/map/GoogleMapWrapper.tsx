@@ -5,6 +5,7 @@ import { subscribeToAreas, addArea, updateAreaStatus } from "@/lib/api";
 import { PolygonLayer } from "@deck.gl/layers";
 import DeckGLOverlay from "./Overlay";
 import { Button } from "../ui/button";
+import { Popover, PopoverContent, PopoverAnchor } from "../ui/popover";
 import { Link } from "react-router";
 import { ArrowLeft, Pencil, X } from "lucide-react";
 import { DrawingManager } from "./DrawingManager";
@@ -79,6 +80,10 @@ export function GoogleMapWrapper({
 
   const [tempRectangle, setTempRectangle] =
     useState<google.maps.Rectangle | null>(null);
+  const [popoverAnchor, setPopoverAnchor] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Subscribe to real-time updates
   useEffect(() => {
@@ -101,6 +106,7 @@ export function GoogleMapWrapper({
 
       // Store the rectangle instance to clean it up later
       setTempRectangle(rectangle);
+      setPopoverAnchor({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
     }
   };
 
@@ -240,6 +246,7 @@ export function GoogleMapWrapper({
                   setSelectedAreaId(info.object.id);
                   setNewAreaBounds(null);
                   setIsDrawing(false);
+                  setPopoverAnchor({ x: info.x, y: info.y });
                   return true;
                 }
               },
@@ -248,9 +255,33 @@ export function GoogleMapWrapper({
         />
       </Map>
 
-      {/* Sidebar for Details */}
-      {(selectedAreaId || newAreaBounds) && (
-        <div className="absolute top-0 right-0 h-full w-80 bg-white shadow-xl z-10 p-4 animate-in slide-in-from-right">
+      {/* Popover for Details */}
+      <Popover
+        open={!!(selectedAreaId || newAreaBounds)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedAreaId(null);
+            setNewAreaBounds(null);
+            setIsDrawing(false);
+            cleanupTempRectangle();
+            setPopoverAnchor(null);
+          }
+        }}
+      >
+        <PopoverAnchor
+          className="fixed w-1 h-1 invisible pointer-events-none"
+          style={{
+            left: popoverAnchor?.x ?? 0,
+            top: popoverAnchor?.y ?? 0,
+          }}
+        />
+        <PopoverContent
+          className="w-80"
+          side="right"
+          align="start"
+          sideOffset={10}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <MarkerSidebar
             key={selectedAreaId || "new"}
             // We need to cast or update MarkerSidebar to accept CampaignArea
@@ -264,10 +295,11 @@ export function GoogleMapWrapper({
               setNewAreaBounds(null);
               setIsDrawing(false);
               cleanupTempRectangle();
+              setPopoverAnchor(null);
             }}
           />
-        </div>
-      )}
+        </PopoverContent>
+      </Popover>
     </Fragment>
   );
 }
