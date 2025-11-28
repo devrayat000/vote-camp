@@ -1,15 +1,3 @@
-// import "/__/firebase/init.js";
-// import "firebase/app";
-// import "firebase/firestore";
-// window.requi
-// Object.assign(window, { firebase: {} });
-// // @ts-expect-error: missing types for firebase/init
-// require("../scripts/app.js");
-// // @ts-expect-error: missing types for firebase/init
-// require("../scripts/firestore.js");
-// // @ts-expect-error: missing types for firebase/init
-// require("firebase/init");
-
 import { initializeApp } from "firebase/app";
 import { initializeFirestore } from "firebase/firestore";
 
