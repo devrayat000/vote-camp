@@ -1,17 +1,39 @@
+// import "/__/firebase/init.js";
+// import "firebase/app";
+// import "firebase/firestore";
+// window.requi
+// Object.assign(window, { firebase: {} });
+// // @ts-expect-error: missing types for firebase/init
+// require("../scripts/app.js");
+// // @ts-expect-error: missing types for firebase/init
+// require("../scripts/firestore.js");
+// // @ts-expect-error: missing types for firebase/init
+// require("firebase/init");
+
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyBWIAXSu4LaZsEQBEfQSg2MZ7G7szWsGm4",
-  authDomain: "election-campaign-479605.firebaseapp.com",
-  projectId: "election-campaign-479605",
-  storageBucket: "election-campaign-479605.firebasestorage.app",
-  messagingSenderId: "1005039134232",
-  appId: "1:1005039134232:web:d61bf7ae1225470e21056d",
-  measurementId: "G-4NX2W8QN9D",
-};
+async function fetchConfig() {
+  const res = await fetch("/__/firebase/init.json");
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Firebase config: ${res.statusText}`);
+  }
+  return res.json();
+}
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+async function initApp() {
+  const config = await fetchConfig();
+  // Initialize Firebase app if not already initialized
+  return initializeApp(config);
+}
+
+// @ts-expect-error: add to window
+window.firebaseAppPromise = initApp();
+
+export async function ensureInitialized() {
+  // @ts-expect-error: add to window
+  return window.firebaseAppPromise;
+}
+
+const app = await initApp(); // Use existing app initialized by firebase/init.js
+export const db = initializeFirestore(app, {});

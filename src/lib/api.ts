@@ -1,4 +1,4 @@
-import { db } from "./firebase";
+import { db, ensureInitialized } from "./firebase";
 import {
   collection,
   query,
@@ -16,6 +16,7 @@ import type { CampaignMarker, Constituency, Ward, MarkerStatus } from "./types";
 
 export const getConstituencies = async (): Promise<Constituency[]> => {
   try {
+    await ensureInitialized();
     const snapshot = await getDocs(collection(db, "constituencies"));
     return snapshot.docs.map((doc) => {
       const data = doc.data();
@@ -38,6 +39,7 @@ export const getConstituencyById = async (
   id: string
 ): Promise<Constituency | undefined> => {
   try {
+    await ensureInitialized();
     const docRef = doc(db, "constituencies", id);
     const snapshot = await getDoc(docRef);
     if (snapshot.exists()) {
@@ -62,6 +64,7 @@ export const getWardsByConstituency = async (
   constituencyId: string
 ): Promise<Ward[]> => {
   try {
+    await ensureInitialized();
     const q = query(
       collection(db, "wards"),
       where("constituencyId", "==", constituencyId)
@@ -123,6 +126,7 @@ export const addMarker = async (
   marker: Omit<CampaignMarker, "id" | "createdAt">
 ) => {
   try {
+    await ensureInitialized();
     await addDoc(collection(db, "campaign_markers"), {
       ...marker,
       createdAt: new Date().toISOString(),
@@ -139,6 +143,7 @@ export const updateMarkerStatus = async (
   notes?: string
 ) => {
   try {
+    await ensureInitialized();
     const ref = doc(db, "campaign_markers", markerId);
     await updateDoc(ref, { status, notes });
   } catch (e) {
