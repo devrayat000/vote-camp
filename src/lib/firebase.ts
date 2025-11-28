@@ -1,8 +1,11 @@
 import { initializeApp } from "firebase/app";
-import { initializeFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  connectFirestoreEmulator,
+} from "firebase/firestore";
 
 async function fetchConfig() {
-  const res = await fetch("/__/firebase/init.json");
+  const res = await fetch("http://localhost:5000/__/firebase/init.json");
   if (!res.ok) {
     throw new Error(`Failed to fetch Firebase config: ${res.statusText}`);
   }
@@ -16,12 +19,16 @@ async function initApp() {
 }
 
 // @ts-expect-error: add to window
-window.firebaseAppPromise = initApp();
+globalThis.firebaseAppPromise = initApp();
 
 export async function ensureInitialized() {
   // @ts-expect-error: add to window
-  return window.firebaseAppPromise;
+  return globalThis.firebaseAppPromise;
 }
 
 const app = await initApp(); // Use existing app initialized by firebase/init.js
 export const db = initializeFirestore(app, {});
+
+if (!import.meta.env.PROD) {
+  connectFirestoreEmulator(db, "localhost", 8080);
+}
