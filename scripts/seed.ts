@@ -1,17 +1,13 @@
+/* eslint-disable no-useless-escape */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { db } from "../src/lib/firebase";
-import {
-  collection,
-  doc,
-  setDoc,
-  writeBatch,
-  GeoPoint,
-} from "firebase/firestore";
+import { doc, writeBatch } from "firebase/firestore";
 import * as turf from "@turf/turf";
 import fs from "fs";
 import path from "path";
 
 // Read the JSON file
-const cccPath = path.join(process.cwd(), "ccc.json");
+const cccPath = path.join(__dirname, "ccc.json");
 const cccData = JSON.parse(fs.readFileSync(cccPath, "utf-8"));
 
 const slugify = (text: string) => {
