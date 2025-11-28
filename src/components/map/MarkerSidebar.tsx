@@ -1,12 +1,12 @@
 import { useState } from "react";
-import type { CampaignMarker, MarkerStatus } from "@/lib/types";
+import type { CampaignArea, MarkerStatus } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { X } from "lucide-react";
 
 interface MarkerSidebarProps {
-  marker?: CampaignMarker;
+  marker?: CampaignArea;
   isNew: boolean;
   onSave: (status: MarkerStatus, notes: string) => void;
   onUpdate: (id: string, status: MarkerStatus, notes: string) => void;
@@ -38,7 +38,7 @@ export function MarkerSidebar({
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">
-          {isNew ? "New Visit" : "Visit Details"}
+          {isNew ? "New Area Status" : "Area Details"}
         </h2>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-4 w-4" />
@@ -75,14 +75,14 @@ export function MarkerSidebar({
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setNotes(e.target.value)
             }
-            placeholder="Enter visit details..."
+            placeholder="Enter area details..."
             className="h-24"
           />
         </div>
 
         <div className="pt-4">
           <Button type="submit" className="w-full">
-            {isNew ? "Save Visit" : "Update Visit"}
+            {isNew ? "Save Area" : "Update Area"}
           </Button>
         </div>
       </form>

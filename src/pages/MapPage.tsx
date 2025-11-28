@@ -23,13 +23,18 @@ export async function loader({ params }: LoaderFunctionArgs) {
 }
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+const MAP_LIBRARIES: ("drawing" | "geometry" | "places")[] = [
+  "drawing",
+  "geometry",
+  "places",
+];
 
 export function Component() {
   const loaderData = useLoaderData<typeof loader>();
 
   return (
     <div className="relative w-full h-screen overflow-hidden">
-      <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+      <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={MAP_LIBRARIES}>
         <Suspense
           fallback={
             <div className="flex items-center justify-center h-screen">

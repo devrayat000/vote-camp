@@ -30,11 +30,18 @@ export interface Ward {
   };
 }
 
+export interface AreaBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
 export type MarkerStatus = "pending" | "visited" | "absent" | "completed";
 
-export interface CampaignMarker {
+export interface CampaignArea {
   id: string;
-  location: GeoPoint;
+  bounds: AreaBounds;
   status: MarkerStatus;
   notes: string;
   createdAt: string; // ISO string

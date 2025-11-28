@@ -1,12 +1,14 @@
 import { Fragment, useEffect, useState } from "react";
 import { Map, MapControl, ControlPosition } from "@vis.gl/react-google-maps";
-import type { Constituency, CampaignMarker } from "@/lib/types";
-import { subscribeToMarkers } from "@/lib/api";
+import type { Constituency, CampaignArea, MarkerStatus } from "@/lib/types";
+import { subscribeToAreas, addArea, updateAreaStatus } from "@/lib/api";
 import { PolygonLayer } from "@deck.gl/layers";
 import DeckGLOverlay from "./Overlay";
 import { Button } from "../ui/button";
 import { Link } from "react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil, X } from "lucide-react";
+import { DrawingManager } from "./DrawingManager";
+import { MarkerSidebar } from "./MarkerSidebar";
 
 // Helper to convert GeoJSON coordinates to Google Maps paths
 const convertCoordinates = (geometry: {
@@ -43,22 +45,88 @@ function getRestrictions(constituency: Constituency) {
   return bounds;
 }
 
+function getStatusColor(
+  status: MarkerStatus
+): [number, number, number, number] {
+  switch (status) {
+    case "visited":
+      return [34, 197, 94, 100]; // Green
+    case "absent":
+      return [239, 68, 68, 100]; // Red
+    case "completed":
+      return [59, 130, 246, 100]; // Blue
+    case "pending":
+    default:
+      return [148, 163, 184, 100]; // Gray
+  }
+}
+
 interface GoogleMapWrapperProps {
   constituency: Constituency;
 }
 
 export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
-  const [, setMarkers] = useState<CampaignMarker[]>([]);
+  const [areas, setAreas] = useState<CampaignArea[]>([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+  const [newAreaBounds, setNewAreaBounds] =
+    useState<google.maps.LatLngBoundsLiteral | null>(null);
+
+  const [tempRectangle, setTempRectangle] =
+    useState<google.maps.Rectangle | null>(null);
 
   // Subscribe to real-time updates
   useEffect(() => {
-    const unsubscribe = subscribeToMarkers(constituency.id, (data) => {
-      setMarkers(data);
+    const unsubscribe = subscribeToAreas(constituency.id, (data) => {
+      setAreas(data);
     });
     return () => unsubscribe();
   }, [constituency.id]);
 
   const restrictions = getRestrictions(constituency);
+
+  const handleOverlayComplete = (rectangle: google.maps.Rectangle) => {
+    const bounds = rectangle.getBounds();
+    if (bounds) {
+      setNewAreaBounds(bounds.toJSON());
+      setIsDrawing(false);
+      // Do NOT remove the map from the rectangle yet.
+      // We need it visible while the user fills out the form.
+      // We will remove it when the form is saved or cancelled.
+
+      // Store the rectangle instance to clean it up later
+      setTempRectangle(rectangle);
+    }
+  };
+
+  const cleanupTempRectangle = () => {
+    if (tempRectangle) {
+      tempRectangle.setMap(null);
+      setTempRectangle(null);
+    }
+  };
+
+  const handleSaveNewArea = async (status: MarkerStatus, notes: string) => {
+    if (newAreaBounds) {
+      await addArea({
+        bounds: newAreaBounds,
+        status,
+        notes,
+        constituencyId: constituency.id,
+      });
+      setNewAreaBounds(null);
+      cleanupTempRectangle();
+    }
+  };
+
+  const handleUpdateArea = async (
+    id: string,
+    status: MarkerStatus,
+    notes: string
+  ) => {
+    await updateAreaStatus(id, status, notes);
+    setSelectedAreaId(null);
+  };
 
   return (
     <Fragment>
@@ -66,7 +134,6 @@ export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
         defaultCenter={constituency.center}
         defaultZoom={15}
         mapId="DEMO_MAP_ID"
-        // onClick={handleMapClick}
         disableDefaultUI={false}
         mapTypeControlOptions={{
           position: ControlPosition.TOP_RIGHT,
@@ -77,19 +144,49 @@ export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
           latLngBounds: restrictions,
           strictBounds: false,
         }}
+        onClick={() => {
+          setSelectedAreaId(null);
+          setNewAreaBounds(null);
+          setIsDrawing(false);
+          cleanupTempRectangle();
+        }}
       >
         <MapControl position={ControlPosition.TOP_LEFT}>
-          <Button
-            variant="secondary"
-            size="icon-lg"
-            asChild
-            className="shadow-md bg-white rounded-xs"
-          >
-            <Link to="/" replace>
-              <ArrowLeft className="h-8 w-8" />
-            </Link>
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="secondary"
+              size="icon-lg"
+              asChild
+              className="shadow-md bg-white rounded-xs"
+            >
+              <Link to="/" replace>
+                <ArrowLeft className="h-8 w-8" />
+              </Link>
+            </Button>
+
+            <Button
+              variant={isDrawing ? "destructive" : "secondary"}
+              size="icon-lg"
+              className="shadow-md bg-white rounded-xs"
+              onClick={() => {
+                setIsDrawing(!isDrawing);
+                setSelectedAreaId(null);
+                setNewAreaBounds(null);
+              }}
+            >
+              {isDrawing ? (
+                <X className="h-8 w-8" />
+              ) : (
+                <Pencil className="h-8 w-8" />
+              )}
+            </Button>
+          </div>
         </MapControl>
+
+        {isDrawing && (
+          <DrawingManager onOverlayComplete={handleOverlayComplete} />
+        )}
+
         <DeckGLOverlay
           interleaved
           layers={[
@@ -99,14 +196,62 @@ export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
               getPolygon: (d) => d.coordinates,
               getLineColor: [0x25, 0x63, 0xeb, 0x80],
               getLineWidth: 20,
-              getFillColor: [0x25, 0x63, 0xeb, 0x40],
+              getFillColor: [0x25, 0x63, 0xeb, 0x05], // Reduced opacity to see areas better
               lineWidthMinPixels: 1,
               colorFormat: "RGBA",
               pickable: true,
             }),
+            new PolygonLayer({
+              id: "campaign-areas-layer",
+              data: areas,
+              getPolygon: (d: CampaignArea) => [
+                [d.bounds.west, d.bounds.north],
+                [d.bounds.east, d.bounds.north],
+                [d.bounds.east, d.bounds.south],
+                [d.bounds.west, d.bounds.south],
+                [d.bounds.west, d.bounds.north],
+              ],
+              getFillColor: (d: CampaignArea) => getStatusColor(d.status),
+              getLineColor: (d: CampaignArea) => {
+                const color = getStatusColor(d.status);
+                return [color[0], color[1], color[2], 255];
+              },
+              getLineWidth: 2,
+              lineWidthMinPixels: 1,
+              pickable: true,
+              onClick: (info) => {
+                if (info.object) {
+                  setSelectedAreaId(info.object.id);
+                  setNewAreaBounds(null);
+                  setIsDrawing(false);
+                  return true;
+                }
+              },
+            }),
           ]}
         />
       </Map>
+
+      {/* Sidebar for Details */}
+      {(selectedAreaId || newAreaBounds) && (
+        <div className="absolute top-0 right-0 h-full w-80 bg-white shadow-xl z-10 p-4 animate-in slide-in-from-right">
+          <MarkerSidebar
+            key={selectedAreaId || "new"}
+            // We need to cast or update MarkerSidebar to accept CampaignArea
+            // For now, let's assume we update MarkerSidebar or map the props
+            marker={areas.find((m) => m.id === selectedAreaId)}
+            isNew={!!newAreaBounds}
+            onSave={handleSaveNewArea}
+            onUpdate={handleUpdateArea}
+            onClose={() => {
+              setSelectedAreaId(null);
+              setNewAreaBounds(null);
+              setIsDrawing(false);
+              cleanupTempRectangle();
+            }}
+          />
+        </div>
+      )}
     </Fragment>
   );
 }

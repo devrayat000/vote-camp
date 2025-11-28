@@ -10,7 +10,7 @@ import {
   getDocs,
   getDoc,
 } from "firebase/firestore";
-import type { CampaignMarker, Constituency, Ward, MarkerStatus } from "./types";
+import type { CampaignArea, Constituency, Ward, MarkerStatus } from "./types";
 
 // --- Constituencies & Wards (Real Firestore Data) ---
 
@@ -87,26 +87,26 @@ export const getWardsByConstituency = async (
   }
 };
 
-// --- Markers (Real-time Firestore) ---
+// --- Areas (Real-time Firestore) ---
 
-export const subscribeToMarkers = (
+export const subscribeToAreas = (
   constituencyId: string,
-  onUpdate: (markers: CampaignMarker[]) => void
+  onUpdate: (areas: CampaignArea[]) => void
 ) => {
   try {
     const q = query(
-      collection(db, "campaign_markers"),
+      collection(db, "campaign_areas"),
       where("constituencyId", "==", constituencyId)
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const markers = snapshot.docs.map((doc) => ({
+        const areas = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        })) as CampaignMarker[];
-        onUpdate(markers);
+        })) as CampaignArea[];
+        onUpdate(areas);
       },
       (error) => {
         console.error("Firestore subscription error:", error);
@@ -122,31 +122,29 @@ export const subscribeToMarkers = (
   }
 };
 
-export const addMarker = async (
-  marker: Omit<CampaignMarker, "id" | "createdAt">
-) => {
+export const addArea = async (area: Omit<CampaignArea, "id" | "createdAt">) => {
   try {
     await ensureInitialized();
-    await addDoc(collection(db, "campaign_markers"), {
-      ...marker,
+    await addDoc(collection(db, "campaign_areas"), {
+      ...area,
       createdAt: new Date().toISOString(),
     });
   } catch (e) {
-    console.error("Error adding marker:", e);
-    alert("Could not save marker. Check Firebase config.");
+    console.error("Error adding area:", e);
+    alert("Could not save area. Check Firebase config.");
   }
 };
 
-export const updateMarkerStatus = async (
-  markerId: string,
+export const updateAreaStatus = async (
+  areaId: string,
   status: MarkerStatus,
   notes?: string
 ) => {
   try {
     await ensureInitialized();
-    const ref = doc(db, "campaign_markers", markerId);
+    const ref = doc(db, "campaign_areas", areaId);
     await updateDoc(ref, { status, notes });
   } catch (e) {
-    console.error("Error updating marker:", e);
+    console.error("Error updating area:", e);
   }
 };
