@@ -9,6 +9,7 @@ import { Link } from "react-router";
 import { ArrowLeft, Pencil, X } from "lucide-react";
 import { DrawingManager } from "./DrawingManager";
 import { MarkerSidebar } from "./MarkerSidebar";
+import { toast } from "sonner";
 
 // Helper to convert GeoJSON coordinates to Google Maps paths
 const convertCoordinates = (geometry: {
@@ -63,10 +64,14 @@ function getStatusColor(
 
 interface GoogleMapWrapperProps {
   constituency: Constituency;
+  areas: CampaignArea[];
 }
 
-export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
-  const [areas, setAreas] = useState<CampaignArea[]>([]);
+export function GoogleMapWrapper({
+  constituency,
+  areas: initialAreas,
+}: GoogleMapWrapperProps) {
+  const [areas, setAreas] = useState<CampaignArea[]>(initialAreas);
   const [isDrawing, setIsDrawing] = useState(false);
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [newAreaBounds, setNewAreaBounds] =
@@ -108,12 +113,19 @@ export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
 
   const handleSaveNewArea = async (status: MarkerStatus, notes: string) => {
     if (newAreaBounds) {
-      await addArea({
-        bounds: newAreaBounds,
-        status,
-        notes,
-        constituencyId: constituency.id,
-      });
+      toast.promise(
+        addArea({
+          bounds: newAreaBounds,
+          status,
+          notes,
+          constituencyId: constituency.id,
+        }),
+        {
+          loading: "Saving new area...",
+          success: "New area saved!",
+          error: "Failed to save new area.",
+        }
+      );
       setNewAreaBounds(null);
       cleanupTempRectangle();
     }
@@ -124,7 +136,11 @@ export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
     status: MarkerStatus,
     notes: string
   ) => {
-    await updateAreaStatus(id, status, notes);
+    toast.promise(updateAreaStatus(id, status, notes), {
+      loading: "Updating area...",
+      success: "Area updated!",
+      error: "Failed to update area.",
+    });
     setSelectedAreaId(null);
   };
 

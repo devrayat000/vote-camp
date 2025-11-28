@@ -9,7 +9,7 @@ export default function DeckGLOverlay(props: GoogleMapsOverlayProps) {
   const map = useMap();
 
   // the GoogleMapsOverlay can persist throughout the lifetime of the DeckGlOverlay
-  const deck = useMemo(() => new GoogleMapsOverlay({ interleaved: true }), []);
+  const deck = useMemo(() => new GoogleMapsOverlay({ interleaved: false }), []);
 
   useEffect(() => {
     deck.setMap(map);

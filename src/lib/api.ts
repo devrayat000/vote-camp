@@ -135,6 +135,14 @@ export const addArea = async (area: Omit<CampaignArea, "id" | "createdAt">) => {
   }
 };
 
+export const getAreas = async () => {
+  const snapshot = await getDocs(collection(db, "campaign_areas"));
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as CampaignArea[];
+};
+
 export const updateAreaStatus = async (
   areaId: string,
   status: MarkerStatus,
