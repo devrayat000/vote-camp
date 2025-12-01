@@ -227,7 +227,7 @@ export function GoogleMapWrapper({
               getPolygon: (d) => d.coordinates,
               getLineColor: [0x25, 0x63, 0xeb, 0x80],
               getLineWidth: 20,
-              getFillColor: [0x25, 0x63, 0xeb, 0x05], // Reduced opacity to see areas better
+              getFillColor: [0x25, 0x63, 0xeb, 0x20], // Reduced opacity to see areas better
               lineWidthMinPixels: 1,
               colorFormat: "RGBA",
               pickable: true,

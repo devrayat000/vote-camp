@@ -17,7 +17,9 @@ import type { CampaignArea, Constituency, Ward, MarkerStatus } from "./types";
 export const getConstituencies = async (): Promise<Constituency[]> => {
   try {
     await ensureInitialized();
-    const snapshot = await getDocs(collection(db, "constituencies"));
+    const collectionRef = collection(db, "constituencies");
+    const queryRef = query(collectionRef, where("id", "==", "dhaka-10"));
+    const snapshot = await getDocs(queryRef);
     return snapshot.docs.map((doc) => {
       const data = doc.data();
       return {
