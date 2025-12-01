@@ -1,5 +1,11 @@
-import { Fragment, useEffect, useState } from "react";
-import { Map, MapControl, ControlPosition } from "@vis.gl/react-google-maps";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import {
+  Map,
+  MapControl,
+  ControlPosition,
+  useApiIsLoaded,
+  useMapsLibrary,
+} from "@vis.gl/react-google-maps";
 import type { Constituency, CampaignArea, MarkerStatus } from "@/lib/types";
 import { subscribeToAreas, addArea, updateAreaStatus } from "@/lib/api";
 import { PolygonLayer } from "@deck.gl/layers";
@@ -35,17 +41,6 @@ const convertCoordinates = (geometry: {
   return [];
 };
 
-function getRestrictions(constituency: Constituency) {
-  const constituencyPaths = convertCoordinates(constituency.geometry);
-
-  // Calculate bounds based on the constituency geometry
-  const bounds = new google.maps.LatLngBounds();
-  constituencyPaths.forEach((path) => {
-    path.forEach((point) => bounds.extend(point));
-  });
-  return bounds;
-}
-
 function getStatusColor(
   status: MarkerStatus
 ): [number, number, number, number] {
@@ -71,6 +66,9 @@ export function GoogleMapWrapper({
   constituency,
   areas: initialAreas,
 }: GoogleMapWrapperProps) {
+  const isLoaded = useApiIsLoaded();
+  const coreLib = useMapsLibrary("core");
+  const mapsLib = useMapsLibrary("maps");
   const [areas, setAreas] = useState<CampaignArea[]>(initialAreas);
   const [isDrawing, setIsDrawing] = useState(false);
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
@@ -80,6 +78,21 @@ export function GoogleMapWrapper({
   const [tempRectangle, setTempRectangle] =
     useState<google.maps.Rectangle | null>(null);
 
+  const restrictions = useMemo(() => {
+    if (!isLoaded || !coreLib) {
+      return undefined;
+    }
+
+    const constituencyPaths = convertCoordinates(constituency.geometry);
+
+    // Calculate bounds based on the constituency geometry
+    const bounds = new coreLib.LatLngBounds();
+    constituencyPaths.forEach((path) => {
+      path.forEach((point) => bounds.extend(point));
+    });
+    return bounds;
+  }, [isLoaded, coreLib, constituency]);
+
   // Subscribe to real-time updates
   useEffect(() => {
     const unsubscribe = subscribeToAreas(constituency.id, (data) => {
@@ -87,8 +100,6 @@ export function GoogleMapWrapper({
     });
     return () => unsubscribe();
   }, [constituency.id]);
-
-  const restrictions = getRestrictions(constituency);
 
   const handleOverlayComplete = (rectangle: google.maps.Rectangle) => {
     const bounds = rectangle.getBounds();
@@ -153,13 +164,17 @@ export function GoogleMapWrapper({
         disableDefaultUI={false}
         mapTypeControlOptions={{
           position: ControlPosition.TOP_RIGHT,
-          style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+          style: mapsLib?.MapTypeControlStyle.DROPDOWN_MENU,
         }}
         gestureHandling={"greedy"}
-        restriction={{
-          latLngBounds: restrictions,
-          strictBounds: false,
-        }}
+        restriction={
+          restrictions
+            ? {
+                latLngBounds: restrictions,
+                strictBounds: false,
+              }
+            : undefined
+        }
         onClick={() => {
           setSelectedAreaId(null);
           setNewAreaBounds(null);
