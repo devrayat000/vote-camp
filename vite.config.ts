@@ -1,5 +1,6 @@
 import path from "node:path";
 import { defineConfig } from "vite";
+import { replacePlugin } from "rolldown/plugins";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -27,6 +28,15 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+    },
+  },
+  build: {
+    rolldownOptions: {
+      plugins: [
+        replacePlugin({
+          [`typeof window`]: JSON.stringify("object"),
+        }),
+      ],
     },
   },
 });
