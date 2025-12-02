@@ -4,19 +4,24 @@ import {
   connectFirestoreEmulator,
 } from "firebase/firestore";
 
-if (!import.meta.env.PROD && typeof window === "undefined") {
+if (typeof window === "undefined") {
+  let baseUrl = "http://localhost:5000";
+  if (import.meta.env.PROD || process.env.NODE_ENV === "production") {
+    baseUrl = "https://election-campaign-479605.web.app";
+  }
+  console.log("Setting fetch base URL to:", baseUrl);
   const _fetch = globalThis.fetch;
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     let url: URL;
     if (typeof input === "string") {
-      url = new URL(input, "http://localhost:5000");
+      url = new URL(input, baseUrl);
     } else if (input instanceof URL) {
       url = input;
     } else {
-      url = new URL(input.url, "http://localhost:5000");
+      url = new URL(input.url, baseUrl);
     }
 
-    url = new URL(url, "http://localhost:5000");
+    url = new URL(url, baseUrl);
 
     return _fetch(url, init);
   };
@@ -47,6 +52,6 @@ export async function ensureInitialized() {
 const app = await initApp(); // Use existing app initialized by firebase/init.js
 export const db = initializeFirestore(app, {});
 
-if (!import.meta.env.PROD) {
+if (!import.meta.env.PROD && process.env.NODE_ENV !== "production") {
   connectFirestoreEmulator(db, "localhost", 8080);
 }

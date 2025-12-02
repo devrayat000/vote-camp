@@ -71,7 +71,7 @@ export const getWardsByConstituency = async (
     await ensureInitialized();
     const q = query(
       collection(db, "wards"),
-      where("constituencyId", "==", constituencyId)
+      where("constituencyIds", "array-contains", constituencyId)
     );
     const snapshot = await getDocs(q);
     return snapshot.docs.map((doc) => {
@@ -98,7 +98,7 @@ export const subscribeToWards = (
   try {
     const q = query(
       collection(db, "wards"),
-      where("constituencyId", "==", constituencyId)
+      where("constituencyIds", "array-contains", constituencyId)
     );
 
     const unsubscribe = onSnapshot(

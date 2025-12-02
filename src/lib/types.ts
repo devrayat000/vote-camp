@@ -10,7 +10,7 @@ export interface Constituency {
   center: GeoPoint;
   geometry: {
     type: "Polygon" | "MultiPolygon";
-    coordinates: any[]; // GeoJSON coordinates
+    coordinates: unknown[]; // GeoJSON coordinates
   };
   divisionCode?: string;
   divisionName?: string;
@@ -29,10 +29,10 @@ export interface ActivityLog {
 export interface Ward {
   id: string;
   name: string;
-  constituencyId: string;
+  constituencyIds: string[];
   geometry: {
     type: "Polygon" | "MultiPolygon";
-    coordinates: any[];
+    coordinates: unknown[];
   };
   status: MarkerStatus;
   activityLog: ActivityLog[];

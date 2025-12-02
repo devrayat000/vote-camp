@@ -96,7 +96,7 @@ export function Component() {
                       defaultValue={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select a ward" />
                         </SelectTrigger>
                       </FormControl>

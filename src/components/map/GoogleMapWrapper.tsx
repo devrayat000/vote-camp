@@ -7,14 +7,12 @@ import {
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import type { Constituency, Ward, MarkerStatus } from "@/lib/types";
-import { subscribeToWards, addWard } from "@/lib/api";
-import { generateMockWards } from "@/lib/mockWards";
+import { subscribeToWards } from "@/lib/api";
 import { PolygonLayer } from "@deck.gl/layers";
 import DeckGLOverlay from "./Overlay";
 import { Button } from "../ui/button";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
-import { toast } from "sonner";
 
 // Helper to convert GeoJSON coordinates to Google Maps paths
 const convertCoordinates = (geometry: {
@@ -45,14 +43,12 @@ function getStatusColor(
 ): [number, number, number, number] {
   switch (status) {
     case "visited":
+    case "completed":
       return [34, 197, 94, 100]; // Green
     case "absent":
-      return [239, 68, 68, 100]; // Red
-    case "completed":
-      return [59, 130, 246, 100]; // Blue
     case "pending":
     default:
-      return [148, 163, 184, 100]; // Gray
+      return [239, 68, 68, 100]; // Red
   }
 }
 
@@ -90,14 +86,6 @@ export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
     return () => unsubscribe();
   }, [constituency.id]);
 
-  const handleSeedWards = async () => {
-    const mockWards = generateMockWards(constituency);
-    for (const ward of mockWards) {
-      await addWard(ward);
-    }
-    toast.success("Wards seeded!");
-  };
-
   return (
     <Fragment>
       <Map
@@ -134,15 +122,6 @@ export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
                 <ArrowLeft className="h-8 w-8" />
               </Link>
             </Button>
-            {wards.length === 0 && (
-              <Button
-                variant="default"
-                onClick={handleSeedWards}
-                className="shadow-md"
-              >
-                Seed Wards
-              </Button>
-            )}
           </div>
         </MapControl>
 
@@ -151,8 +130,8 @@ export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
           layers={[
             new PolygonLayer({
               id: "constituency-layer",
-              data: [constituency.geometry],
-              getPolygon: (d) => d.coordinates,
+              data: [constituency],
+              getPolygon: (d: Constituency) => d.geometry.coordinates,
               getLineColor: [0x25, 0x63, 0xeb, 0x80],
               getLineWidth: 20,
               getFillColor: [0x25, 0x63, 0xeb, 0x20],
