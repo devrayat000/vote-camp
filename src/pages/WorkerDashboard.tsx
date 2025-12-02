@@ -22,12 +22,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 
 const formSchema = z.object({
   wardId: z.string().min(1, "Please select a ward"),
   workerName: z.string().min(2, "Name must be at least 2 characters"),
+  comments: z.string().optional(),
 });
 
 export function Component() {
@@ -41,6 +43,7 @@ export function Component() {
     defaultValues: {
       wardId: "",
       workerName: "",
+      comments: "",
     },
   });
 
@@ -59,6 +62,7 @@ export function Component() {
         workerName: values.workerName,
         timestamp: new Date().toISOString(),
         action: "marked_completed",
+        comments: values.comments,
       });
       toast.success("Ward status updated successfully!");
       form.reset();
@@ -99,7 +103,7 @@ export function Component() {
                       <SelectContent>
                         {wards.map((ward) => (
                           <SelectItem key={ward.id} value={ward.id}>
-                            {ward.name} ({ward.status})
+                            {ward.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -116,6 +120,19 @@ export function Component() {
                     <FormLabel>Your Name</FormLabel>
                     <FormControl>
                       <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="comments"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Comments (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Any observations..." {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
