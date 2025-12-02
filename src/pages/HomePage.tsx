@@ -41,12 +41,17 @@ export function Component() {
                       <p className="text-sm text-muted-foreground mb-4">
                         District: {c.district}
                       </p>
-                      <Button asChild className="w-full">
-                        <Link to={`/map/${c.id}`}>
-                          <MapPin className="mr-2 h-4 w-4" />
-                          Open Map
-                        </Link>
-                      </Button>
+                      <div className="flex flex-col gap-2">
+                        <Button asChild className="w-full">
+                          <Link to={`/map/${c.id}`}>
+                            <MapPin className="mr-2 h-4 w-4" />
+                            Admin Map
+                          </Link>
+                        </Button>
+                        <Button asChild variant="outline" className="w-full">
+                          <Link to={`/worker/${c.id}`}>Worker Form</Link>
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}

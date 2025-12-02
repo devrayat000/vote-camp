@@ -20,6 +20,12 @@ export interface Constituency {
   totalPopulation?: number;
 }
 
+export interface ActivityLog {
+  workerName: string;
+  timestamp: string;
+  action: string;
+}
+
 export interface Ward {
   id: string;
   name: string;
@@ -28,6 +34,8 @@ export interface Ward {
     type: "Polygon" | "MultiPolygon";
     coordinates: any[];
   };
+  status: MarkerStatus;
+  activityLog: ActivityLog[];
 }
 
 export interface AreaBounds {

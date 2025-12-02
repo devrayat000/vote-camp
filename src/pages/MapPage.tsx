@@ -5,7 +5,7 @@ import {
   useLoaderData,
   Await,
 } from "react-router";
-import { getAreas, getConstituencyById } from "@/lib/api";
+import { getConstituencyById } from "@/lib/api";
 import { GoogleMapWrapper } from "@/components/map/GoogleMapWrapper";
 import { Button } from "@/components/ui/button";
 import { APIProvider } from "@vis.gl/react-google-maps";
@@ -16,11 +16,8 @@ export async function loader({ params }: LoaderFunctionArgs) {
     throw new Response("Constituency ID is required", { status: 400 });
   }
   const constituency = getConstituencyById(constituencyId);
-  const areas = getAreas();
-  // const wards = getWardsByConstituency(constituencyId);
   return {
     constituency,
-    areas,
   };
 }
 
@@ -44,10 +41,8 @@ export function Component() {
             </div>
           }
         >
-          <Await
-            resolve={Promise.all([loaderData.constituency, loaderData.areas])}
-          >
-            {([constituency, areas]) => {
+          <Await resolve={loaderData.constituency}>
+            {(constituency) => {
               if (!constituency) {
                 return (
                   <div className="flex flex-col items-center justify-center h-full gap-4">
@@ -61,9 +56,7 @@ export function Component() {
                 );
               }
 
-              return (
-                <GoogleMapWrapper constituency={constituency} areas={areas} />
-              );
+              return <GoogleMapWrapper constituency={constituency} />;
             }}
           </Await>
         </Suspense>

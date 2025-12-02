@@ -6,15 +6,14 @@ import {
   useApiIsLoaded,
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
-import type { Constituency, CampaignArea, MarkerStatus } from "@/lib/types";
-import { subscribeToAreas, addArea, updateAreaStatus } from "@/lib/api";
+import type { Constituency, Ward, MarkerStatus } from "@/lib/types";
+import { subscribeToWards, addWard } from "@/lib/api";
+import { generateMockWards } from "@/lib/mockWards";
 import { PolygonLayer } from "@deck.gl/layers";
 import DeckGLOverlay from "./Overlay";
 import { Button } from "../ui/button";
 import { Link } from "react-router";
-import { ArrowLeft, Pencil, X } from "lucide-react";
-import { DrawingManager } from "./DrawingManager";
-import { MarkerSidebar } from "./MarkerSidebar";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 // Helper to convert GeoJSON coordinates to Google Maps paths
@@ -59,24 +58,14 @@ function getStatusColor(
 
 interface GoogleMapWrapperProps {
   constituency: Constituency;
-  areas: CampaignArea[];
 }
 
-export function GoogleMapWrapper({
-  constituency,
-  areas: initialAreas,
-}: GoogleMapWrapperProps) {
+export function GoogleMapWrapper({ constituency }: GoogleMapWrapperProps) {
   const isLoaded = useApiIsLoaded();
   const coreLib = useMapsLibrary("core");
   const mapsLib = useMapsLibrary("maps");
-  const [areas, setAreas] = useState<CampaignArea[]>(initialAreas);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
-  const [newAreaBounds, setNewAreaBounds] =
-    useState<google.maps.LatLngBoundsLiteral | null>(null);
-
-  const [tempRectangle, setTempRectangle] =
-    useState<google.maps.Rectangle | null>(null);
+  const [wards, setWards] = useState<Ward[]>([]);
+  const [selectedWardId, setSelectedWardId] = useState<string | null>(null);
 
   const restrictions = useMemo(() => {
     if (!isLoaded || !coreLib) {
@@ -95,64 +84,18 @@ export function GoogleMapWrapper({
 
   // Subscribe to real-time updates
   useEffect(() => {
-    const unsubscribe = subscribeToAreas(constituency.id, (data) => {
-      setAreas(data);
+    const unsubscribe = subscribeToWards(constituency.id, (data) => {
+      setWards(data);
     });
     return () => unsubscribe();
   }, [constituency.id]);
 
-  const handleOverlayComplete = (rectangle: google.maps.Rectangle) => {
-    const bounds = rectangle.getBounds();
-    if (bounds) {
-      setNewAreaBounds(bounds.toJSON());
-      setIsDrawing(false);
-      // Do NOT remove the map from the rectangle yet.
-      // We need it visible while the user fills out the form.
-      // We will remove it when the form is saved or cancelled.
-
-      // Store the rectangle instance to clean it up later
-      setTempRectangle(rectangle);
+  const handleSeedWards = async () => {
+    const mockWards = generateMockWards(constituency);
+    for (const ward of mockWards) {
+      await addWard(ward);
     }
-  };
-
-  const cleanupTempRectangle = () => {
-    if (tempRectangle) {
-      tempRectangle.setMap(null);
-      setTempRectangle(null);
-    }
-  };
-
-  const handleSaveNewArea = async (status: MarkerStatus, notes: string) => {
-    if (newAreaBounds) {
-      toast.promise(
-        addArea({
-          bounds: newAreaBounds,
-          status,
-          notes,
-          constituencyId: constituency.id,
-        }),
-        {
-          loading: "Saving new area...",
-          success: "New area saved!",
-          error: "Failed to save new area.",
-        }
-      );
-      setNewAreaBounds(null);
-      cleanupTempRectangle();
-    }
-  };
-
-  const handleUpdateArea = async (
-    id: string,
-    status: MarkerStatus,
-    notes: string
-  ) => {
-    toast.promise(updateAreaStatus(id, status, notes), {
-      loading: "Updating area...",
-      success: "Area updated!",
-      error: "Failed to update area.",
-    });
-    setSelectedAreaId(null);
+    toast.success("Wards seeded!");
   };
 
   return (
@@ -176,10 +119,7 @@ export function GoogleMapWrapper({
             : undefined
         }
         onClick={() => {
-          setSelectedAreaId(null);
-          setNewAreaBounds(null);
-          setIsDrawing(false);
-          cleanupTempRectangle();
+          setSelectedWardId(null);
         }}
       >
         <MapControl position={ControlPosition.TOP_LEFT}>
@@ -194,29 +134,17 @@ export function GoogleMapWrapper({
                 <ArrowLeft className="h-8 w-8" />
               </Link>
             </Button>
-
-            <Button
-              variant={isDrawing ? "destructive" : "secondary"}
-              size="icon-lg"
-              className="shadow-md bg-white rounded-xs"
-              onClick={() => {
-                setIsDrawing(!isDrawing);
-                setSelectedAreaId(null);
-                setNewAreaBounds(null);
-              }}
-            >
-              {isDrawing ? (
-                <X className="h-8 w-8" />
-              ) : (
-                <Pencil className="h-8 w-8" />
-              )}
-            </Button>
+            {wards.length === 0 && (
+              <Button
+                variant="default"
+                onClick={handleSeedWards}
+                className="shadow-md"
+              >
+                Seed Wards
+              </Button>
+            )}
           </div>
         </MapControl>
-
-        {isDrawing && (
-          <DrawingManager onOverlayComplete={handleOverlayComplete} />
-        )}
 
         <DeckGLOverlay
           interleaved
@@ -227,69 +155,78 @@ export function GoogleMapWrapper({
               getPolygon: (d) => d.coordinates,
               getLineColor: [0x25, 0x63, 0xeb, 0x80],
               getLineWidth: 20,
-              getFillColor: [0x25, 0x63, 0xeb, 0x20], // Reduced opacity to see areas better
+              getFillColor: [0x25, 0x63, 0xeb, 0x20],
               lineWidthMinPixels: 1,
               colorFormat: "RGBA",
               pickable: true,
             }),
             new PolygonLayer({
-              id: "campaign-areas-layer",
-              data: areas,
-              getPolygon: (d: CampaignArea) => [
-                [d.bounds.west, d.bounds.north],
-                [d.bounds.east, d.bounds.north],
-                [d.bounds.east, d.bounds.south],
-                [d.bounds.west, d.bounds.south],
-                [d.bounds.west, d.bounds.north],
-              ],
-              getFillColor: (d: CampaignArea) => getStatusColor(d.status),
-              getLineColor: (d: CampaignArea) => {
-                const color = getStatusColor(d.status);
-                return [color[0], color[1], color[2], 255];
-              },
+              id: "wards-layer",
+              data: wards,
+              getPolygon: (d: Ward) => d.geometry.coordinates,
+              getFillColor: (d: Ward) => getStatusColor(d.status),
+              getLineColor: [0, 0, 0, 100],
               getLineWidth: 2,
               lineWidthMinPixels: 1,
               pickable: true,
               onClick: (info) => {
                 if (info.object) {
-                  setSelectedAreaId(info.object.id);
-                  setNewAreaBounds(null);
-                  setIsDrawing(false);
+                  setSelectedWardId(info.object.id);
                   return true;
                 }
               },
             }),
           ]}
-          layerFilter={({ layer, viewport }) => {
-            if (layer.id === "campaign-areas-layer") {
-              return viewport.zoom >= 15;
-            }
-            if (layer.id === "constituency-layer") {
-              return viewport.zoom < 15;
-            }
+          layerFilter={() => {
             return true;
           }}
         />
       </Map>
 
       {/* Sidebar for Details */}
-      {(selectedAreaId || newAreaBounds) && (
-        <div className="absolute top-0 right-0 h-full w-80 bg-white shadow-xl z-10 p-4 animate-in slide-in-from-right">
-          <MarkerSidebar
-            key={selectedAreaId || "new"}
-            // We need to cast or update MarkerSidebar to accept CampaignArea
-            // For now, let's assume we update MarkerSidebar or map the props
-            marker={areas.find((m) => m.id === selectedAreaId)}
-            isNew={!!newAreaBounds}
-            onSave={handleSaveNewArea}
-            onUpdate={handleUpdateArea}
-            onClose={() => {
-              setSelectedAreaId(null);
-              setNewAreaBounds(null);
-              setIsDrawing(false);
-              cleanupTempRectangle();
-            }}
-          />
+      {selectedWardId && (
+        <div className="absolute top-0 right-0 h-full w-80 bg-white shadow-xl z-10 p-4 animate-in slide-in-from-right overflow-y-auto">
+          <h2 className="text-xl font-bold mb-4">Ward Details</h2>
+          {(() => {
+            const ward = wards.find((w) => w.id === selectedWardId);
+            if (!ward) return null;
+            return (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold">Name</h3>
+                  <p>{ward.name}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Status</h3>
+                  <p className="capitalize">{ward.status}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Activity Log</h3>
+                  {ward.activityLog && ward.activityLog.length > 0 ? (
+                    <ul className="space-y-2 mt-2">
+                      {ward.activityLog.map((log, i) => (
+                        <li key={i} className="text-sm border-b pb-2">
+                          <p className="font-medium">{log.workerName}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(log.timestamp).toLocaleString()}
+                          </p>
+                          <p className="text-xs">{log.action}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-500">No activity yet.</p>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedWardId(null)}
+                >
+                  Close
+                </Button>
+              </div>
+            );
+          })()}
         </div>
       )}
     </Fragment>

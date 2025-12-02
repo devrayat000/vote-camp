@@ -9,6 +9,8 @@ import {
   doc,
   getDocs,
   getDoc,
+  arrayUnion,
+  setDoc,
 } from "firebase/firestore";
 import type { CampaignArea, Constituency, Ward, MarkerStatus } from "./types";
 
@@ -86,6 +88,77 @@ export const getWardsByConstituency = async (
   } catch (e) {
     console.error("Error fetching wards:", e);
     return [];
+  }
+};
+
+export const subscribeToWards = (
+  constituencyId: string,
+  onUpdate: (wards: Ward[]) => void
+) => {
+  try {
+    const q = query(
+      collection(db, "wards"),
+      where("constituencyId", "==", constituencyId)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const wards = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            geometry:
+              typeof data.geometry === "string"
+                ? JSON.parse(data.geometry)
+                : data.geometry,
+          };
+        }) as Ward[];
+        onUpdate(wards);
+      },
+      (error) => {
+        console.error("Firestore subscription error:", error);
+        onUpdate([]);
+      }
+    );
+
+    return unsubscribe;
+  } catch (e) {
+    console.error("Error setting up subscription:", e);
+    return () => {};
+  }
+};
+
+export const updateWardStatus = async (
+  wardId: string,
+  status: MarkerStatus,
+  activityLogEntry: any
+) => {
+  try {
+    await ensureInitialized();
+    const ref = doc(db, "wards", wardId);
+    await updateDoc(ref, {
+      status,
+      activityLog: arrayUnion(activityLogEntry),
+    });
+  } catch (e) {
+    console.error("Error updating ward:", e);
+    throw e;
+  }
+};
+
+export const addWard = async (ward: Ward) => {
+  try {
+    await ensureInitialized();
+    const wardData = {
+      ...ward,
+      geometry: JSON.stringify(ward.geometry),
+    };
+    await setDoc(doc(db, "wards", ward.id), wardData);
+  } catch (e) {
+    console.error("Error adding ward:", e);
+    throw e;
   }
 };
 

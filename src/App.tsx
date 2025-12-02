@@ -23,6 +23,13 @@ const routes = createBrowserRouter(
           return module;
         }}
       />
+      <Route
+        path="worker/:constituencyId"
+        lazy={async () => {
+          const module = await import("./pages/WorkerDashboard");
+          return module;
+        }}
+      />
     </Route>
   )
 );
